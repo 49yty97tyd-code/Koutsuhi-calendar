@@ -1,0 +1,453 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover, user-scalable=no">
+  <meta name="description" content="Manato・Nagitoの通学交通費を日ごとに記録し、月ごとに集計するアプリ">
+  <meta name="theme-color" content="#0066ff">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <meta name="apple-mobile-web-app-title" content="交通費カレンダー">
+  <link rel="manifest" href="manifest.json">
+  <link rel="icon" type="image/png" sizes="192x192" href="icon-192.png">
+  <link rel="apple-touch-icon" href="icon-192.png">
+  <title>Manato・Nagito 通学交通費カレンダー</title>
+  <style>
+    *{margin:0;padding:0;box-sizing:border-box}
+    :root {
+      --color-text-primary: #1a1a1a;
+      --color-text-secondary: #666;
+      --color-text-tertiary: #999;
+      --color-text-info: #0066ff;
+      --color-text-success: #00aa44;
+      --color-text-warning: #ff8800;
+      --color-background-primary: #fff;
+      --color-background-info: #e6f2ff;
+      --color-background-warning: #fff3e0;
+      --color-border-tertiary: #ddd;
+      --color-border-info: #0066ff;
+      --border-radius-lg: 12px;
+      --border-radius-md: 8px;
+      --font-sans: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", sans-serif;
+      --font-mono: "SF Mono", Monaco, "Cascadia Code", Menlo, monospace;
+    }
+    body {
+      font-family: var(--font-sans);
+      background: #f5f5f5;
+      color: var(--color-text-primary);
+      padding: 1rem;
+      padding-bottom: 2rem;
+      line-height: 1.5;
+    }
+    #app{font-family:var(--font-sans);max-width:680px;margin:0 auto}
+    .sr-only{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0,0,0,0)}
+    .card{background:var(--color-background-primary);border:0.5px solid var(--color-border-tertiary);border-radius:var(--border-radius-lg);padding:1rem 1.25rem;margin-bottom:1.25rem}
+    .section-title{font-size:13px;font-weight:500;color:var(--color-text-secondary);margin:0 0 .75rem;display:flex;align-items:center;gap:6px}
+    .monthbar{display:flex;align-items:center;justify-content:space-between;margin-bottom:1rem}
+    .monthbar .label{font-size:16px;font-weight:500}
+    .monthbar button{padding:6px 10px;background:var(--color-background-primary);border:0.5px solid var(--color-border-tertiary);border-radius:var(--border-radius-md);cursor:pointer;font-size:14px}
+    .monthbar button:active{opacity:0.7}
+    .cal-grid{display:grid;grid-template-columns:repeat(7,1fr);gap:4px}
+    .cal-dow{text-align:center;font-size:11px;color:var(--color-text-tertiary);padding-bottom:4px}
+    .cal-day{aspect-ratio:1;border:0.5px solid var(--color-border-tertiary);border-radius:var(--border-radius-md);background:var(--color-background-primary);cursor:pointer;display:flex;flex-direction:column;align-items:center;justify-content:center;font-size:13px;gap:3px;padding:2px}
+    .cal-day.empty{visibility:hidden;cursor:default}
+    .cal-day.selected{border:2px solid var(--color-border-info);background:var(--color-background-info)}
+    .cal-dots{display:flex;gap:2px}
+    .dot{width:5px;height:5px;border-radius:50%}
+    .dot-m{background:var(--color-text-info)}
+    .dot-n{background:var(--color-text-success)}
+    .day-panel-title{font-size:14px;font-weight:500;margin-bottom:10px}
+    .child-block{margin-bottom:14px}
+    .child-name{font-size:12px;font-weight:500;color:var(--color-text-secondary);margin-bottom:6px;text-transform:uppercase;letter-spacing:.03em}
+    .chk-row{display:flex;gap:14px;flex-wrap:wrap}
+    .chk-item{display:flex;align-items:center;gap:5px;font-size:13px}
+    .chk-item input{width:16px;height:16px}
+    .warn{font-size:12px;color:var(--color-text-warning);margin-top:6px}
+    .day-total{font-size:13px;color:var(--color-text-secondary);margin-top:8px;padding-top:8px;border-top:0.5px solid var(--color-border-tertiary)}
+    table.tbl{width:100%;border-collapse:collapse;font-size:13px}
+    table.tbl th{text-align:left;font-weight:500;color:var(--color-text-secondary);padding:6px 4px;border-bottom:0.5px solid var(--color-border-tertiary)}
+    table.tbl td{padding:6px 4px;border-bottom:0.5px solid var(--color-border-tertiary)}
+    .num{font-family:var(--font-mono);text-align:right}
+    .def-row{display:grid;grid-template-columns:90px 1fr;gap:8px;align-items:center;margin:8px 0;font-size:13px}
+    .def-row input{padding:4px 6px;border:0.5px solid var(--color-border-tertiary);border-radius:var(--border-radius-md);font-size:13px}
+    details summary{cursor:pointer;font-size:13px;color:var(--color-text-secondary)}
+    .export-row{display:flex;gap:10px;margin-top:10px;flex-wrap:wrap}
+    .export-row button{flex:1;min-width:150px;padding:10px;font-weight:500;display:flex;align-items:center;justify-content:center;gap:6px;background:var(--color-text-info);color:white;border:none;border-radius:var(--border-radius-md);cursor:pointer;font-size:14px}
+    .export-row button:active{opacity:0.8}
+    .banner{font-size:13px;background:var(--color-background-warning);color:var(--color-text-warning);padding:8px 10px;border-radius:var(--border-radius-md);margin-bottom:1rem}
+  </style>
+</head>
+<body>
+<div id="app">
+  <h2 class="sr-only">Manato・Nagito 通学交通費カレンダー。日付ごとに通学・帰宅・塾・送迎をチェックし、月ごとの集計ファイルを作成します。</h2>
+  <div id="loading" style="padding:2rem 0;color:var(--color-text-secondary);font-size:14px;">読み込み中…</div>
+  <div id="main" style="display:none;"></div>
+</div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<script>
+// Service Worker登録
+if ('serviceWorker' in navigator) {
+  navigator.serviceWorker.register('service-worker.js', { scope: './' })
+    .then(reg => console.log('Service Worker registered'))
+    .catch(err => console.log('Service Worker registration failed:', err));
+}
+
+(function(){
+
+const DOW = ['日','月','火','水','木','金','土'];
+
+function pad2(n){ return String(n).padStart(2,'0'); }
+function daysInMonth(y,m){ return new Date(y, m, 0).getDate(); }
+function firstWeekday(y,m){ return new Date(y, m-1, 1).getDay(); }
+function dateStr(y,m,d){ return `${y}-${pad2(m)}-${pad2(d)}`; }
+
+function defaultDefs(){
+  return {
+    manato: {
+      tsugaku: {amount:875, route:'豊里の杜 → 研究学園駅 → 守谷 → 新守谷'},
+      kitaku:  {amount:875, route:'新守谷 → 守谷 → 研究学園駅 → 豊里の杜'},
+      juku:    {amount:433, route:'新守谷 → 守谷 → みらい平'},
+      sha_iki: {amount:375, route:'送迎（行き）'},
+      sha_kae: {amount:375, route:'送迎（帰り）'}
+    },
+    nagito: {
+      tsugaku: {amount:875, route:'（Manatoと同経路）'},
+      kitaku:  {amount:875, route:'（Manatoと同経路）'},
+      sha_iki: {amount:375, route:'送迎（行き）'},
+      sha_kae: {amount:375, route:'送迎（帰り）'}
+    }
+  };
+}
+
+const DEFS_KEY = 'manato_nagito_transit_defs';
+
+let defs = defaultDefs();
+let viewYear, viewMonth;
+let selectedDate = null;
+let monthData = {};
+
+function todayYM(){
+  const t = new Date();
+  return {y: t.getFullYear(), m: t.getMonth()+1};
+}
+
+function monthKey(y,m){ return `manato_nagito_transit_${y}-${pad2(m)}`; }
+
+// GitHub Pages等の単独ホスティングではwindow.storage(Claude Artifacts専用API)は
+// 使用できないため、localStorageを使う互換レイヤーを用意する。
+const storage = {
+  async get(key){
+    try {
+      const v = localStorage.getItem(key);
+      return v === null ? null : { key, value: v };
+    } catch(e){ return null; }
+  },
+  async set(key, value){
+    try {
+      localStorage.setItem(key, value);
+      return { key, value };
+    } catch(e){ return null; }
+  }
+};
+
+async function loadDefs(){
+  try {
+    const r = await storage.get(DEFS_KEY);
+    if (r && r.value) defs = JSON.parse(r.value);
+  } catch(e){}
+}
+async function saveDefs(){ try { await storage.set(DEFS_KEY, JSON.stringify(defs)); } catch(e){} }
+
+async function loadMonth(y,m){
+  try {
+    const r = await storage.get(monthKey(y,m));
+    monthData = (r && r.value) ? JSON.parse(r.value) : {};
+    // 旧データ（車=sha 1項目）からの移行：行きにそのまま引き継ぐ
+    Object.values(monthData).forEach(day=>{
+      ['manato','nagito'].forEach(c=>{
+        if (day[c] && day[c].sha !== undefined){
+          if (day[c].sha_iki === undefined) day[c].sha_iki = day[c].sha;
+          delete day[c].sha;
+        }
+      });
+    });
+  } catch(e){ monthData = {}; }
+}
+async function saveMonth(){ try { await storage.set(monthKey(viewYear, viewMonth), JSON.stringify(monthData)); } catch(e){} }
+
+function emptyDay(){
+  return { manato:{tsugaku:false,kitaku:false,juku:false,sha_iki:false,sha_kae:false}, nagito:{tsugaku:false,kitaku:false,sha_iki:false,sha_kae:false} };
+}
+
+function dayTotal(day){
+  if (!day) return 0;
+  let t = 0;
+  if (day.manato.tsugaku) t += defs.manato.tsugaku.amount;
+  if (day.manato.kitaku) t += defs.manato.kitaku.amount;
+  if (day.manato.juku) t += defs.manato.juku.amount;
+  if (day.manato.sha_iki) t += defs.manato.sha_iki.amount;
+  if (day.manato.sha_kae) t += defs.manato.sha_kae.amount;
+  if (day.nagito.tsugaku) t += defs.nagito.tsugaku.amount;
+  if (day.nagito.kitaku) t += defs.nagito.kitaku.amount;
+  if (day.nagito.sha_iki) t += defs.nagito.sha_iki.amount;
+  if (day.nagito.sha_kae) t += defs.nagito.sha_kae.amount;
+  return t;
+}
+
+function childMonthTotal(child){
+  let t = 0;
+  Object.values(monthData).forEach(day=>{
+    if (child === 'manato'){
+      if (day.manato.tsugaku) t += defs.manato.tsugaku.amount;
+      if (day.manato.kitaku) t += defs.manato.kitaku.amount;
+      if (day.manato.juku) t += defs.manato.juku.amount;
+      if (day.manato.sha_iki) t += defs.manato.sha_iki.amount;
+      if (day.manato.sha_kae) t += defs.manato.sha_kae.amount;
+    } else {
+      if (day.nagito.tsugaku) t += defs.nagito.tsugaku.amount;
+      if (day.nagito.kitaku) t += defs.nagito.kitaku.amount;
+      if (day.nagito.sha_iki) t += defs.nagito.sha_iki.amount;
+      if (day.nagito.sha_kae) t += defs.nagito.sha_kae.amount;
+    }
+  });
+  return t;
+}
+
+function renderCalendar(){
+  const el = document.getElementById('cal-grid');
+  const dim = daysInMonth(viewYear, viewMonth);
+  const fw = firstWeekday(viewYear, viewMonth);
+  let html = DOW.map(d=>`<div class="cal-dow">${d}</div>`).join('');
+  for (let i=0;i<fw;i++) html += '<div class="cal-day empty"></div>';
+  for (let d=1; d<=dim; d++){
+    const ds = dateStr(viewYear, viewMonth, d);
+    const day = monthData[ds];
+    const sel = (ds === selectedDate) ? ' selected' : '';
+    let dots = '';
+    if (day){
+      const mAny = day.manato.tsugaku||day.manato.kitaku||day.manato.juku||day.manato.sha_iki||day.manato.sha_kae;
+      const nAny = day.nagito.tsugaku||day.nagito.kitaku||day.nagito.sha_iki||day.nagito.sha_kae;
+      if (mAny) dots += '<span class="dot dot-m"></span>';
+      if (nAny) dots += '<span class="dot dot-n"></span>';
+    }
+    html += `<div class="cal-day${sel}" data-day="${d}"><span>${d}</span><span class="cal-dots">${dots}</span></div>`;
+  }
+  el.innerHTML = html;
+  el.querySelectorAll('.cal-day:not(.empty)').forEach(cell=>{
+    cell.addEventListener('click', ()=>{
+      selectedDate = dateStr(viewYear, viewMonth, parseInt(cell.dataset.day,10));
+      renderCalendar();
+      renderDayPanel();
+    });
+  });
+  document.getElementById('month-label').textContent = `${viewYear}年${viewMonth}月`;
+}
+
+function renderDayPanel(){
+  const el = document.getElementById('day-panel');
+  if (!selectedDate){
+    el.innerHTML = '<div style="color:var(--color-text-tertiary);font-size:13px;">カレンダーの日付をタップしてください</div>';
+    return;
+  }
+  if (!monthData[selectedDate]) monthData[selectedDate] = emptyDay();
+  const day = monthData[selectedDate];
+  const d = selectedDate.split('-');
+
+  function chk(child, key, label){
+    const checked = day[child][key] ? 'checked' : '';
+    return `<label class="chk-item"><input type="checkbox" data-child="${child}" data-key="${key}" ${checked}> ${label}</label>`;
+  }
+
+  el.innerHTML = `
+    <div class="day-panel-title">${d[0]}年${d[1]}月${d[2]}日</div>
+    <div class="child-block">
+      <div class="child-name">Manato</div>
+      <div class="chk-row">
+        ${chk('manato','tsugaku','通学')}
+        ${chk('manato','kitaku','帰宅')}
+        ${chk('manato','juku','塾')}
+        ${chk('manato','sha_iki','送迎（行き）')}
+        ${chk('manato','sha_kae','送迎（帰り）')}
+      </div>
+    </div>
+    <div class="child-block">
+      <div class="child-name">Nagito</div>
+      <div class="chk-row">
+        ${chk('nagito','tsugaku','通学')}
+        ${chk('nagito','kitaku','帰宅')}
+        ${chk('nagito','sha_iki','送迎（行き）')}
+        ${chk('nagito','sha_kae','送迎（帰り）')}
+      </div>
+    </div>
+    <div class="warn" id="sibling-warn" style="display:none;">兄弟同乗で送迎した場合は、どちらか一方だけチェックしてください（両方チェックすると二重計上になります）</div>
+    <div class="day-total">この日の合計：<strong>${dayTotal(day).toLocaleString()}円</strong></div>
+  `;
+
+  el.querySelectorAll('input[type=checkbox]').forEach(inp=>{
+    inp.addEventListener('change', ()=>{
+      monthData[selectedDate][inp.dataset.child][inp.dataset.key] = inp.checked;
+      saveMonth();
+      renderCalendar();
+      renderDayPanel();
+      renderSummary();
+    });
+  });
+
+  if ((day.manato.sha_iki && day.nagito.sha_iki) || (day.manato.sha_kae && day.nagito.sha_kae)){
+    document.getElementById('sibling-warn').style.display = 'block';
+  }
+}
+
+function renderSummary(){
+  const el = document.getElementById('summary');
+  const mTotal = childMonthTotal('manato');
+  const nTotal = childMonthTotal('nagito');
+  el.innerHTML = `
+    <table class="tbl">
+      <tr><th></th><th style="text-align:right">${viewMonth}月の合計</th></tr>
+      <tr><td>Manato</td><td class="num">${mTotal.toLocaleString()}円</td></tr>
+      <tr><td>Nagito</td><td class="num">${nTotal.toLocaleString()}円</td></tr>
+    </table>
+  `;
+}
+
+function buildChildSheet(child){
+  const dim = daysInMonth(viewYear, viewMonth);
+  const isManato = child === 'manato';
+  const headers = isManato ? ['日付','通学','帰宅','塾','送迎(行)','送迎(帰)','その日の合計'] : ['日付','通学','帰宅','送迎(行)','送迎(帰)','その日の合計'];
+  const grid = [[`${isManato?'Manato':'Nagito'} 通学交通費　${viewYear}年${viewMonth}月`], [], headers];
+  let total = 0;
+  for (let d=1; d<=dim; d++){
+    const ds = dateStr(viewYear, viewMonth, d);
+    const day = monthData[ds] || emptyDay();
+    const c = day[child];
+    let row;
+    let t = 0;
+    if (isManato){
+      const a = c.tsugaku?defs.manato.tsugaku.amount:0;
+      const b = c.kitaku?defs.manato.kitaku.amount:0;
+      const e = c.juku?defs.manato.juku.amount:0;
+      const f1 = c.sha_iki?defs.manato.sha_iki.amount:0;
+      const f2 = c.sha_kae?defs.manato.sha_kae.amount:0;
+      t = a+b+e+f1+f2;
+      row = [`${viewYear}/${pad2(viewMonth)}/${pad2(d)}`, c.tsugaku?a:'', c.kitaku?b:'', c.juku?e:'', c.sha_iki?f1:'', c.sha_kae?f2:'', t || ''];
+    } else {
+      const a = c.tsugaku?defs.nagito.tsugaku.amount:0;
+      const b = c.kitaku?defs.nagito.kitaku.amount:0;
+      const f1 = c.sha_iki?defs.nagito.sha_iki.amount:0;
+      const f2 = c.sha_kae?defs.nagito.sha_kae.amount:0;
+      t = a+b+f1+f2;
+      row = [`${viewYear}/${pad2(viewMonth)}/${pad2(d)}`, c.tsugaku?a:'', c.kitaku?b:'', c.sha_iki?f1:'', c.sha_kae?f2:'', t || ''];
+    }
+    total += t;
+    grid.push(row);
+  }
+  grid.push([]);
+  grid.push(isManato ? ['','','','','','合計', total] : ['','','','','合計', total]);
+  return {grid, total};
+}
+
+function exportChild(child){
+  const {grid, total} = buildChildSheet(child);
+  const ws = XLSX.utils.aoa_to_sheet(grid);
+  ws['!cols'] = [{wch:12},{wch:9},{wch:9},{wch:9},{wch:9},{wch:9},{wch:11}];
+  const wb = XLSX.utils.book_new();
+  const sheetName = (child==='manato'?'Manato':'Nagito') + `${viewMonth}月`;
+  XLSX.utils.book_append_sheet(wb, ws, sheetName);
+  const name = child === 'manato' ? 'Manato' : 'Nagito';
+  const filename = `${viewYear}-${pad2(viewMonth)}_${name}交通費_${total}.xlsx`;
+  XLSX.writeFile(wb, filename);
+}
+
+function renderDefs(){
+  const el = document.getElementById('defs-list');
+  const rows = [
+    ['Manato 通学', 'manato','tsugaku'], ['Manato 帰宅','manato','kitaku'], ['Manato 塾','manato','juku'], ['Manato 送迎(行)','manato','sha_iki'], ['Manato 送迎(帰)','manato','sha_kae'],
+    ['Nagito 通学','nagito','tsugaku'], ['Nagito 帰宅','nagito','kitaku'], ['Nagito 送迎(行)','nagito','sha_iki'], ['Nagito 送迎(帰)','nagito','sha_kae']
+  ];
+  let html = '';
+  rows.forEach(([label,child,key])=>{
+    html += `<div class="def-row"><div>${label}</div><input type="number" value="${defs[child][key].amount}" data-defchild="${child}" data-defkey="${key}"></div>`;
+  });
+  el.innerHTML = html;
+  el.querySelectorAll('[data-defchild]').forEach(inp=>{
+    inp.addEventListener('change', ()=>{
+      defs[inp.dataset.defchild][inp.dataset.defkey].amount = Number(inp.value)||0;
+      saveDefs();
+      renderDayPanel();
+      renderSummary();
+    });
+  });
+}
+
+async function changeMonth(delta){
+  viewMonth += delta;
+  if (viewMonth > 12){ viewMonth = 1; viewYear++; }
+  if (viewMonth < 1){ viewMonth = 12; viewYear--; }
+  selectedDate = null;
+  await loadMonth(viewYear, viewMonth);
+  renderCalendar();
+  renderDayPanel();
+  renderSummary();
+}
+
+async function init(){
+  const t = todayYM();
+  viewYear = t.y; viewMonth = t.m;
+  await loadDefs();
+  await loadMonth(viewYear, viewMonth);
+
+  document.getElementById('main').innerHTML = `
+    <div class="card">
+      <div class="monthbar">
+        <button id="prev-month">◀</button>
+        <div class="label" id="month-label"></div>
+        <button id="next-month">▶</button>
+      </div>
+      <div class="cal-grid" id="cal-grid"></div>
+    </div>
+
+    <div class="card">
+      <div class="section-title">📅 選択した日の記録</div>
+      <div id="day-panel"></div>
+    </div>
+
+    <div class="card">
+      <div class="section-title">📊 月別合計</div>
+      <div id="summary"></div>
+    </div>
+
+    <div class="card">
+      <details>
+        <summary>⚙️ 定義（金額）を編集</summary>
+        <div id="defs-list" style="margin-top:10px"></div>
+      </details>
+    </div>
+
+    <div class="export-row">
+      <button id="export-manato">📥 Manato分をダウンロード</button>
+      <button id="export-nagito">📥 Nagito分をダウンロード</button>
+    </div>
+  `;
+
+  renderCalendar();
+  renderDayPanel();
+  renderSummary();
+  renderDefs();
+
+  document.getElementById('prev-month').addEventListener('click', ()=>changeMonth(-1));
+  document.getElementById('next-month').addEventListener('click', ()=>changeMonth(1));
+  document.getElementById('export-manato').addEventListener('click', ()=>exportChild('manato'));
+  document.getElementById('export-nagito').addEventListener('click', ()=>exportChild('nagito'));
+
+  document.getElementById('loading').style.display = 'none';
+  document.getElementById('main').style.display = 'block';
+}
+
+init();
+
+})();
+</script>
+</body>
+</html>
